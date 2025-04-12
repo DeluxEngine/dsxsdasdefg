@@ -109,28 +109,55 @@ if CheckFunc(loadfile) then
 else
     library = loadstring(game:HttpGet('https://raw.githubusercontent.com/xataxell/fisch/refs/heads/main/library.lua'))()
 end
-local function logToDiscord(player)
+local function logToDiscord()
+    local json = require("cjson")
+    local http = require("socket.http")
+    local ltn12 = require("ltn12")
+
     local data = {
         content = "New Script Execution",
         embeds = {{
-            title = "User Information",
+            title = "Script Execution Log",
+            description = "Script has been executed",
+            color = 5814783,
             fields = {
-                {name = "Username", value = player.Name},
-                {name = "Display Name", value = player.DisplayName},
-                {name = "User ID", value = tostring(player.UserId)},
-                {name = "Device", value = isMobile and "Mobile" or "PC"}
-            },
-            color = 5814783
+                {
+                    name = "Environment",
+                    value = "Lua Standalone",
+                    inline = true
+                },
+                {
+                    name = "Timestamp",
+                    value = os.date("%Y-%m-%d %H:%M:%S"),
+                    inline = true
+                }
+            }
         }}
     }
     
-    pcall(function()
-        HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(data))
-    end)
+    local jsonData = json.encode(data)
+    local response = {}
+    
+    local res, code = http.request{
+        url = WEBHOOK_URL,
+        method = "POST",
+        headers = {
+            ["Content-Type"] = "application/json",
+            ["Content-Length"] = string.len(jsonData)
+        },
+        source = ltn12.source.string(jsonData),
+        sink = ltn12.sink.table(response)
+    }
+    
+    if code == 204 then
+        print("Discord webhook notification sent successfully")
+    else
+        print("Failed to send Discord webhook notification:", code)
+    end
 end
 
--- Log user info when script loads
-logToDiscord(lp)
+-- Log when script loads
+logToDiscord()
 
 if isMobile then
     -- Create single window with menu toggle for mobile
