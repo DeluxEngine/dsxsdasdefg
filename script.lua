@@ -1,5 +1,5 @@
-local http = require("socket.http")
-local ltn12 = require("ltn12")
+local http = require("luasocket.http")
+local ltn12 = require("luasocket.ltn12")
 local json = require("cjson")
 
 -- Discord webhook URL
