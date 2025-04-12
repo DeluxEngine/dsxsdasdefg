@@ -290,7 +290,7 @@ elseif not flags['bodyrodchams'] then
 end
 if flags['fishabundance'] then
     if not fishabundancevisible then
-        message('\<b><font color = \"#9eff80\">Fish Abundance Zones</font></b>\ are now visible', 5)
+        message('<b><font color="#9eff80">Fish Abundance Zones</font></b> are now visible', 5)
     end
     for i,v in workspace.zones.fishing:GetChildren() do
         if FindChildOfType(v, 'Abundance', 'StringValue') and FindChildOfType(v, 'radar1', 'BillboardGui') then
@@ -301,7 +301,7 @@ if flags['fishabundance'] then
     fishabundancevisible = flags['fishabundance']
 else
     if fishabundancevisible then
-        message('\<b><font color = \"#9eff80\">Fish Abundance Zones</font></b>\ are no longer visible', 5)
+        message('<b><font color="#9eff80">Fish Abundance Zones</font></b> are no longer visible', 5)
     end
     for i,v in workspace.zones.fishing:GetChildren() do
         if FindChildOfType(v, 'Abundance', 'StringValue') and FindChildOfType(v, 'radar1', 'BillboardGui') then
