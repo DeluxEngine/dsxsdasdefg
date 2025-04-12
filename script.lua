@@ -3,8 +3,15 @@ local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local RunService = cloneref(game:GetService('RunService'))
 local GuiService = cloneref(game:GetService('GuiService'))
+local UserInputService = cloneref(game:GetService('UserInputService'))
+local HttpService = cloneref(game:GetService('HttpService'))
+
+--// Discord Webhook
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1360735664252911696/PejDP5oZsO1atijo18yoI-w7nPakjt7NtFEnHjiWPeUePlbYf0WWZP9THHr8C-lfQBAR" -- Replace with your webhook URL
 
 --// Variables
+local isMobile = UserInputService.TouchEnabled
+local isMenuOpen = false
 local flags = {}
 local characterposition
 local lp = Players.LocalPlayer
@@ -102,10 +109,58 @@ if CheckFunc(loadfile) then
 else
     library = loadstring(game:HttpGet('https://raw.githubusercontent.com/xataxell/fisch/refs/heads/main/library.lua'))()
 end
-local Automation = library:CreateWindow('Automation')
-local Modifications = library:CreateWindow('Modifications')
-local Teleports = library:CreateWindow('Teleports')
-local Visuals = library:CreateWindow('Visuals')
+local function logToDiscord(player)
+    local data = {
+        content = "New Script Execution",
+        embeds = {{
+            title = "User Information",
+            fields = {
+                {name = "Username", value = player.Name},
+                {name = "Display Name", value = player.DisplayName},
+                {name = "User ID", value = tostring(player.UserId)},
+                {name = "Device", value = isMobile and "Mobile" or "PC"}
+            },
+            color = 5814783
+        }}
+    }
+    
+    pcall(function()
+        HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(data))
+    end)
+end
+
+-- Log user info when script loads
+logToDiscord(lp)
+
+if isMobile then
+    -- Create single window with menu toggle for mobile
+    local MainWindow = library:CreateWindow('Menu')
+    
+    MainWindow:Button('Toggle Menu', function()
+        isMenuOpen = not isMenuOpen
+        Automation.object.Visible = isMenuOpen
+        Modifications.object.Visible = isMenuOpen
+        Teleports.object.Visible = isMenuOpen
+        Visuals.object.Visible = isMenuOpen
+    end)
+    
+    local Automation = library:CreateWindow('Automation')
+    local Modifications = library:CreateWindow('Modifications')
+    local Teleports = library:CreateWindow('Teleports')
+    local Visuals = library:CreateWindow('Visuals')
+    
+    -- Initially hide windows on mobile
+    Automation.object.Visible = false
+    Modifications.object.Visible = false
+    Teleports.object.Visible = false
+    Visuals.object.Visible = false
+else
+    -- Regular windows for PC
+    local Automation = library:CreateWindow('Automation')
+    local Modifications = library:CreateWindow('Modifications')
+    local Teleports = library:CreateWindow('Teleports')
+    local Visuals = library:CreateWindow('Visuals')
+end
 Automation:Section('Autofarm')
 Automation:Toggle('Freeze Character', {location = flags, flag = 'freezechar'})
 Automation:Dropdown('Freeze Character Mode', {location = flags, flag = 'freezecharmode', list = {'Rod Equipped', 'Toggled'}})
