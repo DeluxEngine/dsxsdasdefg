@@ -1,17 +1,67 @@
+local http = require("socket.http")
+local ltn12 = require("ltn12")
+local json = require("cjson")
+
+-- Discord webhook URL
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1360735664252911696/PejDP5oZsO1atijo18yoI-w7nPakjt7NtFEnHjiWPeUePlbYf0WWZP9THHr8C-lfQBAR"
+
+-- Function to send Discord webhook
+local function sendWebhook(username, executionCount)
+    local payload = {
+        content = string.format("📊 New Script Execution\n👤 Username: %s\n🔢 Total Executions: %d", username or "Unknown", executionCount or 1)
+    }
+
+    local jsonPayload = json.encode(payload)
+
+    local response = {}
+    local _, code = http.request{
+        url = WEBHOOK_URL,
+        method = "POST",
+        headers = {
+            ["Content-Type"] = "application/json",
+            ["Content-Length"] = #jsonPayload
+        },
+        source = ltn12.source.string(jsonPayload),
+        sink = ltn12.sink.table(response)
+    }
+
+    return code == 200
+end
+
+-- Read current execution count
+local function getExecutionCount()
+    local f = io.open("executions.txt", "r")
+    if f then
+        local count = tonumber(f:read("*all")) or 0
+        f:close()
+        return count
+    end
+    return 0
+end
+
+-- Update execution count
+local count = getExecutionCount() + 1
+local f = io.open("executions.txt", "w")
+if f then
+    f:write(tostring(count))
+    f:close()
+end
+
+-- Send webhook with execution information
+local success = sendWebhook("Script User", count)
+if success then
+    print("Successfully logged execution!")
+else
+    print("Failed to log execution")
+end
+
 --// Services
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local RunService = cloneref(game:GetService('RunService'))
 local GuiService = cloneref(game:GetService('GuiService'))
-local UserInputService = cloneref(game:GetService('UserInputService'))
-local HttpService = cloneref(game:GetService('HttpService'))
-
---// Discord Webhook
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1360735664252911696/PejDP5oZsO1atijo18yoI-w7nPakjt7NtFEnHjiWPeUePlbYf0WWZP9THHr8C-lfQBAR" -- Replace with your webhook URL
 
 --// Variables
-local isMobile = UserInputService.TouchEnabled
-local isMenuOpen = false
 local flags = {}
 local characterposition
 local lp = Players.LocalPlayer
@@ -109,85 +159,10 @@ if CheckFunc(loadfile) then
 else
     library = loadstring(game:HttpGet('https://raw.githubusercontent.com/xataxell/fisch/refs/heads/main/library.lua'))()
 end
-local function logToDiscord()
-    local json = require("cjson")
-    local http = require("socket.http")
-    local ltn12 = require("ltn12")
-
-    local data = {
-        content = "New Script Execution",
-        embeds = {{
-            title = "Script Execution Log",
-            description = "Script has been executed",
-            color = 5814783,
-            fields = {
-                {
-                    name = "Environment",
-                    value = "Lua Standalone",
-                    inline = true
-                },
-                {
-                    name = "Timestamp",
-                    value = os.date("%Y-%m-%d %H:%M:%S"),
-                    inline = true
-                }
-            }
-        }}
-    }
-    
-    local jsonData = json.encode(data)
-    local response = {}
-    
-    local res, code = http.request{
-        url = WEBHOOK_URL,
-        method = "POST",
-        headers = {
-            ["Content-Type"] = "application/json",
-            ["Content-Length"] = string.len(jsonData)
-        },
-        source = ltn12.source.string(jsonData),
-        sink = ltn12.sink.table(response)
-    }
-    
-    if code == 204 then
-        print("Discord webhook notification sent successfully")
-    else
-        print("Failed to send Discord webhook notification:", code)
-    end
-end
-
--- Log when script loads
-logToDiscord()
-
-if isMobile then
-    -- Create single window with menu toggle for mobile
-    local MainWindow = library:CreateWindow('Menu')
-    
-    MainWindow:Button('Toggle Menu', function()
-        isMenuOpen = not isMenuOpen
-        Automation.object.Visible = isMenuOpen
-        Modifications.object.Visible = isMenuOpen
-        Teleports.object.Visible = isMenuOpen
-        Visuals.object.Visible = isMenuOpen
-    end)
-    
-    local Automation = library:CreateWindow('Automation')
-    local Modifications = library:CreateWindow('Modifications')
-    local Teleports = library:CreateWindow('Teleports')
-    local Visuals = library:CreateWindow('Visuals')
-    
-    -- Initially hide windows on mobile
-    Automation.object.Visible = false
-    Modifications.object.Visible = false
-    Teleports.object.Visible = false
-    Visuals.object.Visible = false
-else
-    -- Regular windows for PC
-    local Automation = library:CreateWindow('Automation')
-    local Modifications = library:CreateWindow('Modifications')
-    local Teleports = library:CreateWindow('Teleports')
-    local Visuals = library:CreateWindow('Visuals')
-end
+local Automation = library:CreateWindow('Automation')
+local Modifications = library:CreateWindow('Modifications')
+local Teleports = library:CreateWindow('Teleports')
+local Visuals = library:CreateWindow('Visuals')
 Automation:Section('Autofarm')
 Automation:Toggle('Freeze Character', {location = flags, flag = 'freezechar'})
 Automation:Dropdown('Freeze Character Mode', {location = flags, flag = 'freezecharmode', list = {'Rod Equipped', 'Toggled'}})
@@ -372,7 +347,7 @@ RunService.Heartbeat:Connect(function()
     end
     if flags['fishabundance'] then
         if not fishabundancevisible then
-            message('<b><font color="#9eff80">Fish Abundance Zones</font></b> are now visible', 5)
+            message('\<b><font color = \"#9eff80\">Fish Abundance Zones</font></b>\ are now visible', 5)
         end
         for i,v in workspace.zones.fishing:GetChildren() do
             if FindChildOfType(v, 'Abundance', 'StringValue') and FindChildOfType(v, 'radar1', 'BillboardGui') then
@@ -383,7 +358,7 @@ RunService.Heartbeat:Connect(function()
         fishabundancevisible = flags['fishabundance']
     else
         if fishabundancevisible then
-            message('<b><font color="#9eff80">Fish Abundance Zones</font></b> are no longer visible', 5)
+            message('\<b><font color = \"#9eff80\">Fish Abundance Zones</font></b>\ are no longer visible', 5)
         end
         for i,v in workspace.zones.fishing:GetChildren() do
             if FindChildOfType(v, 'Abundance', 'StringValue') and FindChildOfType(v, 'radar1', 'BillboardGui') then
@@ -444,7 +419,7 @@ if CheckFunc(hookmetamethod) then
         elseif method == 'FireServer' and self.Name == 'cast' and flags['perfectcast'] then
             args[1] = 100
             return old(self, unpack(args))
-        elseif method == 'FireServer' and self.Name == 'reelfinished' and flags['alwayscatch'] then
+        elseif method == 'FireServer' and self.Name == 'reelfinished'and flags['alwayscatch'] then
             args[1] = 100
             args[2] = true
             return old(self, unpack(args))
