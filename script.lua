@@ -1,8 +1,8 @@
 --// Services
-local Players = cloneref(game:GetService('Players'))
-local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
-local RunService = cloneref(game:GetService('RunService'))
-local GuiService = cloneref(game:GetService('GuiService'))
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local RunService = game:GetService('RunService')
+local GuiService = game:GetService('GuiService')
 
 --// Variables
 local flags = {}
