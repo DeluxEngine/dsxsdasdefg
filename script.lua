@@ -1,17 +1,18 @@
---// Services
-local Players = game:GetService('Players')
-local ReplicatedStorage = game:GetService('ReplicatedStorage')
-local RunService = game:GetService('RunService')
-local GuiService = game:GetService('GuiService')
+--// Local Variables
+local _s = game:GetService('Players')
+local _p = _s.LocalPlayer
+local _r = game:GetService('ReplicatedStorage')
+local _run = game:GetService('RunService')
+local _g = game:GetService('GuiService')
+local _vm = game:GetService('VirtualInputManager')
 
---// Variables
-local flags = {}
-local characterposition
-local lp = Players.LocalPlayer
-local fishabundancevisible = false
-local deathcon
-local tooltipmessage
-local TeleportLocations = {
+--// Flags
+local _f = {}
+local _cp
+local _fav = false
+local _dc
+local _tm
+local _tl = {
 ['Zones'] = {
     ['Moosewood'] = CFrame.new(379.875458, 134.500519, 233.5495, -0.033920113, 8.13274355e-08, 0.999424577, 8.98441925e-08, 1, -7.83249803e-08, -0.999424577, 8.7135696e-08, -0.033920113),
     ['Roslit Bay'] = CFrame.new(-1472.9812, 132.525513, 707.644531, -0.00177415239, 1.15743369e-07, -0.99999845, -9.25943056e-09, 1, 1.15759981e-07, 0.99999845, 9.46479251e-09, -0.00177415239),
@@ -39,330 +40,339 @@ local TeleportLocations = {
     ['Kings Rod'] = CFrame.new(1380.83862, -807.198608, -304.22229, -0.692510426, 9.24755454e-08, 0.72140789, 4.86611427e-08, 1, -8.1475676e-08, -0.72140789, -2.13182219e-08, -0.692510426)
 }
 }
-local ZoneNames = {}
-local RodNames = {}
-local RodColors = {}
-local RodMaterials = {}
-for i,v in pairs(TeleportLocations['Zones']) do table.insert(ZoneNames, i) end
-for i,v in pairs(TeleportLocations['Rods']) do table.insert(RodNames, i) end
 
---// Functions
-FindChildOfClass = function(parent, classname)
-return parent:FindFirstChildOfClass(classname)
-end
-FindChild = function(parent, child)
-return parent:FindFirstChild(child)
-end
-FindChildOfType = function(parent, childname, classname)
-child = parent:FindFirstChild(childname)
-if child and child.ClassName == classname then
-    return child
-end
-end
-CheckFunc = function(func)
-return typeof(func) == 'function'
+local _zn = {}
+local _rn = {}
+local _rc = {}
+local _rm = {}
+
+for i,v in pairs(_tl['Zones']) do table.insert(_zn, i) end
+for i,v in pairs(_tl['Rods']) do table.insert(_rn, i) end
+
+--// Utility Functions
+local function _find_class(p, c)
+    return p:FindFirstChildOfClass(c)
 end
 
---// Custom Functions
-getchar = function()
-return lp.Character or lp.CharacterAdded:Wait()
+local function _find(p, c)
+    return p:FindFirstChild(c)
 end
-gethrp = function()
-return getchar():WaitForChild('HumanoidRootPart')
+
+local function _find_type(p, n, c)
+    local child = p:FindFirstChild(n)
+    if child and child.ClassName == c then
+        return child
+    end
 end
-gethum = function()
-return getchar():WaitForChild('Humanoid')
+
+local function _check_fn(f)
+    return typeof(f) == 'function'
 end
-FindRod = function()
-if FindChildOfClass(getchar(), 'Tool') and FindChild(FindChildOfClass(getchar(), 'Tool'), 'values') then
-    return FindChildOfClass(getchar(), 'Tool')
-else
-    return nil
+
+--// Core Functions
+local function _get_char()
+    return _p.Character or _p.CharacterAdded:Wait()
 end
+
+local function _get_root()
+    return _get_char():WaitForChild('HumanoidRootPart')
 end
-message = function(text, time)
-if tooltipmessage then tooltipmessage:Remove() end
-tooltipmessage = require(lp.PlayerGui:WaitForChild("GeneralUIModule")):GiveToolTip(lp, text)
-task.spawn(function()
-    task.wait(time)
-    if tooltipmessage then tooltipmessage:Remove(); tooltipmessage = nil end
-end)
+
+local function _get_hum()
+    return _get_char():WaitForChild('Humanoid')
+end
+
+local function _find_tool()
+    if _find_class(_get_char(), 'Tool') and _find(_find_class(_get_char(), 'Tool'), 'values') then
+        return _find_class(_get_char(), 'Tool')
+    else
+        return nil
+    end
+end
+
+local function _show_msg(text, time)
+    if _tm then _tm:Remove() end
+    _tm = require(_p.PlayerGui:WaitForChild("GeneralUIModule")):GiveToolTip(_p, text)
+    task.spawn(function()
+        task.wait(time)
+        if _tm then _tm:Remove(); _tm = nil end
+    end)
 end
 
 --// UI
-local library
-if CheckFunc(makefolder) and (CheckFunc(isfolder) and not isfolder('fisch')) then
-makefolder('fisch')
+local _lib
+if _check_fn(makefolder) and (_check_fn(isfolder) and not isfolder('data')) then
+    makefolder('data')
 end
-if CheckFunc(writefile) and (CheckFunc(isfile) and not isfile('fisch/library.lua')) then
-writefile('fisch/library.lua', game:HttpGet('https://raw.githubusercontent.com/xataxell/fisch/refs/heads/main/library.lua'))
+if _check_fn(writefile) and (_check_fn(isfile) and not isfile('data/ui.lua')) then
+    writefile('data/ui.lua', game:HttpGet('https://raw.githubusercontent.com/xataxell/fisch/refs/heads/main/library.lua'))
 end
-if CheckFunc(loadfile) then
-library = loadfile('fisch/library.lua')()
+if _check_fn(loadfile) then
+    _lib = loadfile('data/ui.lua')()
 else
-library = loadstring(game:HttpGet('https://raw.githubusercontent.com/xataxell/fisch/refs/heads/main/library.lua'))()
+    _lib = loadstring(game:HttpGet('https://raw.githubusercontent.com/xataxell/fisch/refs/heads/main/library.lua'))()
 end
-local Automation = library:CreateWindow('Automation')
-local Modifications = library:CreateWindow('Modifications')
-local Teleports = library:CreateWindow('Teleports')
-local Visuals = library:CreateWindow('Visuals')
+local Automation = _lib:CreateWindow('Automation')
+local Modifications = _lib:CreateWindow('Modifications')
+local Teleports = _lib:CreateWindow('Teleports')
+local Visuals = _lib:CreateWindow('Visuals')
 Automation:Section('Autofarm')
-Automation:Toggle('Freeze Character', {location = flags, flag = 'freezechar'})
-Automation:Dropdown('Freeze Character Mode', {location = flags, flag = 'freezecharmode', list = {'Rod Equipped', 'Toggled'}})
-Automation:Toggle('Auto Cast', {location = flags, flag = 'autocast'})
-Automation:Toggle('Auto Shake', {location = flags, flag = 'autoshake'})
-Automation:Toggle('Auto Reel', {location = flags, flag = 'autoreel'})
+Automation:Toggle('Freeze Character', {location = _f, flag = 'freezechar'})
+Automation:Dropdown('Freeze Character Mode', {location = _f, flag = 'freezecharmode', list = {'Rod Equipped', 'Toggled'}})
+Automation:Toggle('Auto Cast', {location = _f, flag = 'autocast'})
+Automation:Toggle('Auto Shake', {location = _f, flag = 'autoshake'})
+Automation:Toggle('Auto Reel', {location = _f, flag = 'autoreel'})
 -----
-if CheckFunc(hookmetamethod) then
+if _check_fn(hookmetamethod) then
 Modifications:Section('Hooks')
-Modifications:Toggle('No AFK Text', {location = flags, flag = 'noafk'})
-Modifications:Toggle('Perfect Cast', {location = flags, flag = 'perfectcast'})
-Modifications:Toggle('Always Catch', {location = flags, flag = 'alwayscatch'})
+Modifications:Toggle('No AFK Text', {location = _f, flag = 'noafk'})
+Modifications:Toggle('Perfect Cast', {location = _f, flag = 'perfectcast'})
+Modifications:Toggle('Always Catch', {location = _f, flag = 'alwayscatch'})
 end
 Modifications:Section('Client')
-Modifications:Toggle('Infinite Oxygen', {location = flags, flag = 'infoxygen'})
-Modifications:Toggle('No Temp & Oxygen', {location = flags, flag = 'nopeakssystems'})
+Modifications:Toggle('Infinite Oxygen', {location = _f, flag = 'infoxygen'})
+Modifications:Toggle('No Temp & Oxygen', {location = _f, flag = 'nopeakssystems'})
 -----
 Teleports:Section('Locations')
-Teleports:Dropdown('Zones', {location = flags, flag = 'zones', list = ZoneNames})
-Teleports:Button('Teleport To Zone', function() gethrp().CFrame = TeleportLocations['Zones'][flags['zones']] end)
-Teleports:Dropdown('Rod Locations', {location = flags, flag = 'rodlocations', list = RodNames})
-Teleports:Button('Teleport To Rod', function() gethrp().CFrame = TeleportLocations['Rods'][flags['rodlocations']] end)
+Teleports:Dropdown('Zones', {location = _f, flag = 'zones', list = _zn})
+Teleports:Button('Teleport To Zone', function() _get_root().CFrame = _tl['Zones'][_f['zones']] end)
+Teleports:Dropdown('Rod Locations', {location = _f, flag = 'rodlocations', list = _rn})
+Teleports:Button('Teleport To Rod', function() _get_root().CFrame = _tl['Rods'][_f['rodlocations']] end)
 -----
 Visuals:Section('Rod')
-Visuals:Toggle('Body Rod Chams', {location = flags, flag = 'bodyrodchams'})
-Visuals:Toggle('Rod Chams', {location = flags, flag = 'rodchams'})
-Visuals:Dropdown('Material', {location = flags, flag = 'rodmaterial', list = {'ForceField', 'Neon'}})
+Visuals:Toggle('Body Rod Chams', {location = _f, flag = 'bodyrodchams'})
+Visuals:Toggle('Rod Chams', {location = _f, flag = 'rodchams'})
+Visuals:Dropdown('Material', {location = _f, flag = 'rodmaterial', list = {'ForceField', 'Neon'}})
 Visuals:Section('Fish Abundance')
-Visuals:Toggle('Free Fish Radar', {location = flags, flag = 'fishabundance'})
+Visuals:Toggle('Free Fish Radar', {location = _f, flag = 'fishabundance'})
 
 --// Loops
-RunService.Heartbeat:Connect(function()
+_run.Heartbeat:Connect(function()
 -- Autofarm
-if flags['freezechar'] then
-    if flags['freezecharmode'] == 'Toggled' then
-        if characterposition == nil then
-            characterposition = gethrp().CFrame
+if _f['freezechar'] then
+    if _f['freezecharmode'] == 'Toggled' then
+        if _cp == nil then
+            _cp = _get_root().CFrame
         else
-            gethrp().CFrame = characterposition
+            _get_root().CFrame = _cp
         end
-    elseif flags['freezecharmode'] == 'Rod Equipped' then
-        local rod = FindRod()
-        if rod and characterposition == nil then
-            characterposition = gethrp().CFrame
-        elseif rod and characterposition ~= nil then
-            gethrp().CFrame = characterposition
+    elseif _f['freezecharmode'] == 'Rod Equipped' then
+        local rod = _find_tool()
+        if rod and _cp == nil then
+            _cp = _get_root().CFrame
+        elseif rod and _cp ~= nil then
+            _get_root().CFrame = _cp
         else
-            characterposition = nil
+            _cp = nil
         end
     end
 else
-    characterposition = nil
+    _cp = nil
 end
-if flags['autoshake'] then
-    if FindChild(lp.PlayerGui, 'shakeui') and FindChild(lp.PlayerGui['shakeui'], 'safezone') and FindChild(lp.PlayerGui['shakeui']['safezone'], 'button') then
-        GuiService.SelectedObject = lp.PlayerGui['shakeui']['safezone']['button']
-        if GuiService.SelectedObject == lp.PlayerGui['shakeui']['safezone']['button'] then
-            game:GetService('VirtualInputManager'):SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-            game:GetService('VirtualInputManager'):SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+if _f['autoshake'] then
+    if _find(_p.PlayerGui, 'shakeui') and _find(_p.PlayerGui['shakeui'], 'safezone') and _find(_p.PlayerGui['shakeui']['safezone'], 'button') then
+        _g.SelectedObject = _p.PlayerGui['shakeui']['safezone']['button']
+        if _g.SelectedObject == _p.PlayerGui['shakeui']['safezone']['button'] then
+            _vm:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+            _vm:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
         end
     end
 end
-if flags['autocast'] then
-    local rod = FindRod()
+if _f['autocast'] then
+    local rod = _find_tool()
     if rod ~= nil and rod['values']['lure'].Value <= .001 and task.wait(.5) then
         rod.events.cast:FireServer(100, 1)
     end
 end
-if flags['autoreel'] then
-    local rod = FindRod()
+if _f['autoreel'] then
+    local rod = _find_tool()
     if rod ~= nil and rod['values']['lure'].Value == 100 and task.wait(.5) then
-        ReplicatedStorage.events.reelfinished:FireServer(100, true)
+        _r.events.reelfinished:FireServer(100, true)
     end
 end
 
 -- Visuals
-if flags['rodchams'] then
-    local rod = FindRod()
-    if rod ~= nil and FindChild(rod, 'Details') then
+if _f['rodchams'] then
+    local rod = _find_tool()
+    if rod ~= nil and _find(rod, 'Details') then
         local rodName = tostring(rod)
-        if not RodColors[rodName] then
-            RodColors[rodName] = {}
-            RodMaterials[rodName] = {}
+        if not _rc[rodName] then
+            _rc[rodName] = {}
+            _rm[rodName] = {}
         end
         for i,v in rod['Details']:GetDescendants() do
             if v:IsA('BasePart') or v:IsA('MeshPart') then
                 if v.Color ~= Color3.fromRGB(100, 100, 255) then
-                    RodColors[rodName][v.Name..i] = v.Color
+                    _rc[rodName][v.Name..i] = v.Color
                 end
-                if RodMaterials[rodName][v.Name..i] == nil then
+                if _rm[rodName][v.Name..i] == nil then
                     if v.Material == Enum.Material.Neon then
-                        RodMaterials[rodName][v.Name..i] = Enum.Material.Neon
-                    elseif v.Material ~= Enum.Material.ForceField and v.Material ~= Enum.Material[flags['rodmaterial']] then
-                        RodMaterials[rodName][v.Name..i] = v.Material
+                        _rm[rodName][v.Name..i] = Enum.Material.Neon
+                    elseif v.Material ~= Enum.Material.ForceField and v.Material ~= Enum.Material[_f['rodmaterial']] then
+                        _rm[rodName][v.Name..i] = v.Material
                     end
                 end
-                v.Material = Enum.Material[flags['rodmaterial']]
+                v.Material = Enum.Material[_f['rodmaterial']]
                 v.Color = Color3.fromRGB(100, 100, 255)
             end
         end
         if rod['handle'].Color ~= Color3.fromRGB(100, 100, 255) then
-            RodColors[rodName]['handle'] = rod['handle'].Color
+            _rc[rodName]['handle'] = rod['handle'].Color
         end
-        if rod['handle'].Material ~= Enum.Material.ForceField and rod['handle'].Material ~= Enum.Material.Neon and rod['handle'].Material ~= Enum.Material[flags['rodmaterial']] then
-            RodMaterials[rodName]['handle'] = rod['handle'].Material
+        if rod['handle'].Material ~= Enum.Material.ForceField and rod['handle'].Material ~= Enum.Material.Neon and rod['handle'].Material ~= Enum.Material[_f['rodmaterial']] then
+            _rm[rodName]['handle'] = rod['handle'].Material
         end
-        rod['handle'].Material = Enum.Material[flags['rodmaterial']]
+        rod['handle'].Material = Enum.Material[_f['rodmaterial']]
         rod['handle'].Color = Color3.fromRGB(100, 100, 255)
     end
-elseif not flags['rodchams'] then
-    local rod = FindRod()
-    if rod ~= nil and FindChild(rod, 'Details') then
+elseif not _f['rodchams'] then
+    local rod = _find_tool()
+    if rod ~= nil and _find(rod, 'Details') then
         local rodName = tostring(rod)
-        if RodColors[rodName] and RodMaterials[rodName] then
+        if _rc[rodName] and _rm[rodName] then
             for i,v in rod['Details']:GetDescendants() do
                 if v:IsA('BasePart') or v:IsA('MeshPart') then
-                    if RodMaterials[rodName][v.Name..i] and RodColors[rodName][v.Name..i] then
-                        v.Material = RodMaterials[rodName][v.Name..i]
-                        v.Color = RodColors[rodName][v.Name..i]
+                    if _rm[rodName][v.Name..i] and _rc[rodName][v.Name..i] then
+                        v.Material = _rm[rodName][v.Name..i]
+                        v.Color = _rc[rodName][v.Name..i]
                     end
                 end
             end
-            if RodMaterials[rodName]['handle'] and RodColors[rodName]['handle'] then
-                rod['handle'].Material = RodMaterials[rodName]['handle']
-                rod['handle'].Color = RodColors[rodName]['handle']
+            if _rm[rodName]['handle'] and _rc[rodName]['handle'] then
+                rod['handle'].Material = _rm[rodName]['handle']
+                rod['handle'].Color = _rc[rodName]['handle']
             end
         end
     end
 end
-if flags['bodyrodchams'] then
-    local rod = getchar():FindFirstChild('RodBodyModel')
-    if rod ~= nil and FindChild(rod, 'Details') then
+if _f['bodyrodchams'] then
+    local rod = _get_char():FindFirstChild('RodBodyModel')
+    if rod ~= nil and _find(rod, 'Details') then
         local rodName = tostring(rod)
-        if not RodColors[rodName] then
-            RodColors[rodName] = {}
-            RodMaterials[rodName] = {}
+        if not _rc[rodName] then
+            _rc[rodName] = {}
+            _rm[rodName] = {}
         end
         for i,v in rod['Details']:GetDescendants() do
             if v:IsA('BasePart') or v:IsA('MeshPart') then
                 if v.Color ~= Color3.fromRGB(100, 100, 255) then
-                    RodColors[rodName][v.Name..i] = v.Color
+                    _rc[rodName][v.Name..i] = v.Color
                 end
-                if RodMaterials[rodName][v.Name..i] == nil then
+                if _rm[rodName][v.Name..i] == nil then
                     if v.Material == Enum.Material.Neon then
-                        RodMaterials[rodName][v.Name..i] = Enum.Material.Neon
-                    elseif v.Material ~= Enum.Material.ForceField and v.Material ~= Enum.Material[flags['rodmaterial']] then
-                        RodMaterials[rodName][v.Name..i] = v.Material
+                        _rm[rodName][v.Name..i] = Enum.Material.Neon
+                    elseif v.Material ~= Enum.Material.ForceField and v.Material ~= Enum.Material[_f['rodmaterial']] then
+                        _rm[rodName][v.Name..i] = v.Material
                     end
                 end
-                v.Material = Enum.Material[flags['rodmaterial']]
+                v.Material = Enum.Material[_f['rodmaterial']]
                 v.Color = Color3.fromRGB(100, 100, 255)
             end
         end
         if rod['handle'].Color ~= Color3.fromRGB(100, 100, 255) then
-            RodColors[rodName]['handle'] = rod['handle'].Color
+            _rc[rodName]['handle'] = rod['handle'].Color
         end
-        if rod['handle'].Material ~= Enum.Material.ForceField and rod['handle'].Material ~= Enum.Material.Neon and rod['handle'].Material ~= Enum.Material[flags['rodmaterial']] then
-            RodMaterials[rodName]['handle'] = rod['handle'].Material
+        if rod['handle'].Material ~= Enum.Material.ForceField and rod['handle'].Material ~= Enum.Material.Neon and rod['handle'].Material ~= Enum.Material[_f['rodmaterial']] then
+            _rm[rodName]['handle'] = rod['handle'].Material
         end
-        rod['handle'].Material = Enum.Material[flags['rodmaterial']]
+        rod['handle'].Material = Enum.Material[_f['rodmaterial']]
         rod['handle'].Color = Color3.fromRGB(100, 100, 255)
     end
-elseif not flags['bodyrodchams'] then
-    local rod = getchar():FindFirstChild('RodBodyModel')
-    if rod ~= nil and FindChild(rod, 'Details') then
+elseif not _f['bodyrodchams'] then
+    local rod = _get_char():FindFirstChild('RodBodyModel')
+    if rod ~= nil and _find(rod, 'Details') then
         local rodName = tostring(rod)
-        if RodColors[rodName] and RodMaterials[rodName] then
+        if _rc[rodName] and _rm[rodName] then
             for i,v in rod['Details']:GetDescendants() do
                 if v:IsA('BasePart') or v:IsA('MeshPart') then
-                    if RodMaterials[rodName][v.Name..i] and RodColors[rodName][v.Name..i] then
-                        v.Material = RodMaterials[rodName][v.Name..i]
-                        v.Color = RodColors[rodName][v.Name..i]
+                    if _rm[rodName][v.Name..i] and _rc[rodName][v.Name..i] then
+                        v.Material = _rm[rodName][v.Name..i]
+                        v.Color = _rc[rodName][v.Name..i]
                     end
                 end
             end
-            if RodMaterials[rodName]['handle'] and RodColors[rodName]['handle'] then
-                rod['handle'].Material = RodMaterials[rodName]['handle']
-                rod['handle'].Color = RodColors[rodName]['handle']
+            if _rm[rodName]['handle'] and _rc[rodName]['handle'] then
+                rod['handle'].Material = _rm[rodName]['handle']
+                rod['handle'].Color = _rc[rodName]['handle']
             end
         end
     end
 end
-if flags['fishabundance'] then
-    if not fishabundancevisible then
-        message('<b><font color = "#9eff80">Fish Abundance Zones</font></b> are now visible', 5)
+if _f['fishabundance'] then
+    if not _fav then
+        _show_msg('<b><font color = "#9eff80">Fish Abundance Zones</font></b> are now visible', 5)
     end
     for i,v in workspace.zones.fishing:GetChildren() do
-        if FindChildOfType(v, 'Abundance', 'StringValue') and FindChildOfType(v, 'radar1', 'BillboardGui') then
+        if _find_type(v, 'Abundance', 'StringValue') and _find_type(v, 'radar1', 'BillboardGui') then
             v['radar1'].Enabled = true
             v['radar2'].Enabled = true
         end
     end
-    fishabundancevisible = flags['fishabundance']
+    _fav = _f['fishabundance']
 else
-    if fishabundancevisible then
-        message('<b><font color = "#9eff80">Fish Abundance Zones</font></b> are no longer visible', 5)
+    if _fav then
+        _show_msg('<b><font color = "#9eff80">Fish Abundance Zones</font></b> are no longer visible', 5)
     end
     for i,v in workspace.zones.fishing:GetChildren() do
-        if FindChildOfType(v, 'Abundance', 'StringValue') and FindChildOfType(v, 'radar1', 'BillboardGui') then
+        if _find_type(v, 'Abundance', 'StringValue') and _find_type(v, 'radar1', 'BillboardGui') then
             v['radar1'].Enabled = false
             v['radar2'].Enabled = false
         end
     end
-    fishabundancevisible = flags['fishabundance']
+    _fav = _f['fishabundance']
 end
 
 -- Modifications
-if flags['infoxygen'] then
-    if not deathcon then
-        deathcon = gethum().Died:Connect(function()
+if _f['infoxygen'] then
+    if not _dc then
+        _dc = _get_hum().Died:Connect(function()
             task.delay(9, function()
-                if FindChildOfType(getchar(), 'DivingTank', 'Decal') then
-                    FindChildOfType(getchar(), 'DivingTank', 'Decal'):Destroy()
+                if _find_type(_get_char(), 'DivingTank', 'Decal') then
+                    _find_type(_get_char(), 'DivingTank', 'Decal'):Destroy()
                 end
                 local oxygentank = Instance.new('Decal')
                 oxygentank.Name = 'DivingTank'
                 oxygentank.Parent = workspace
                 oxygentank:SetAttribute('Tier', 1/0)
-                oxygentank.Parent = getchar()
-                deathcon = nil
+                oxygentank.Parent = _get_char()
+                _dc = nil
             end)
         end)
     end
-    if deathcon and gethum().Health > 0 then
-        if not getchar():FindFirstChild('DivingTank') then
+    if _dc and _get_hum().Health > 0 then
+        if not _get_char():FindFirstChild('DivingTank') then
             local oxygentank = Instance.new('Decal')
             oxygentank.Name = 'DivingTank'
             oxygentank.Parent = workspace
             oxygentank:SetAttribute('Tier', 1/0)
-            oxygentank.Parent = getchar()
+            oxygentank.Parent = _get_char()
         end
     end
 else
-    if FindChildOfType(getchar(), 'DivingTank', 'Decal') then
-        FindChildOfType(getchar(), 'DivingTank', 'Decal'):Destroy()
+    if _find_type(_get_char(), 'DivingTank', 'Decal') then
+        _find_type(_get_char(), 'DivingTank', 'Decal'):Destroy()
     end
 end
-if flags['nopeakssystems'] then
-    getchar():SetAttribute('WinterCloakEquipped', true)
-    getchar():SetAttribute('Refill', true)
+if _f['nopeakssystems'] then
+    _get_char():SetAttribute('WinterCloakEquipped', true)
+    _get_char():SetAttribute('Refill', true)
 else
-    getchar():SetAttribute('WinterCloakEquipped', nil)
-    getchar():SetAttribute('Refill', false)
+    _get_char():SetAttribute('WinterCloakEquipped', nil)
+    _get_char():SetAttribute('Refill', false)
 end
 end)
 
 --// Hooks
-if CheckFunc(hookmetamethod) then
+if _check_fn(hookmetamethod) then
 local old; old = hookmetamethod(game, "__namecall", function(self, ...)
     local method, args = getnamecallmethod(), {...}
-    if method == 'FireServer' and self.Name == 'afk' and flags['noafk'] then
+    if method == 'FireServer' and self.Name == 'afk' and _f['noafk'] then
         args[1] = false
         return old(self, unpack(args))
-    elseif method == 'FireServer' and self.Name == 'cast' and flags['perfectcast'] then
+    elseif method == 'FireServer' and self.Name == 'cast' and _f['perfectcast'] then
         args[1] = 100
         return old(self, unpack(args))
-    elseif method == 'FireServer' and self.Name == 'reelfinished' and flags['alwayscatch'] then
+    elseif method == 'FireServer' and self.Name == 'reelfinished' and _f['alwayscatch'] then
         args[1] = 100
         args[2] = true
         return old(self, unpack(args))
